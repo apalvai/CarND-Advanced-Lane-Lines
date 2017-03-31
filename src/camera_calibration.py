@@ -44,16 +44,20 @@ def calibrate_and_undistort(image, obj_points, img_points):
     undistorted_img = cv2.undistort(image, mtx, dist, None, mtx)
     return undistorted_img
 
-obj_points, img_points = get_image_and_object_points(9, 6)
-print('obj_ponts: ', len(obj_points))
-print('img_points: ', len(img_points))
+def undistort(image):
+    obj_points, img_points = get_image_and_object_points(9, 6)
+    undistorted_img = calibrate_and_undistort(image, obj_points, img_points)
+    return undistorted_img
 
-test_image = cv2.imread('../test_images/straight_lines2.jpg')
-undistorted_img = calibrate_and_undistort(test_image, obj_points, img_points)
+def test():
+    test_image = cv2.imread('../test_images/straight_lines2.jpg')
+    undistorted_img = undistort(test_image)
+    
+    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
+    ax1.imshow(test_image)
+    ax1.set_title('Original Image', fontsize=30)
+    ax2.imshow(undistorted_img)
+    ax2.set_title('Undistorted Image', fontsize=30)
+    plt.show()
 
-f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
-ax1.imshow(test_image)
-ax1.set_title('Original Image', fontsize=30)
-ax2.imshow(undistorted_img)
-ax2.set_title('Undistorted Image', fontsize=30)
-plt.show()
+test()
