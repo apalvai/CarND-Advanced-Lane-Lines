@@ -4,8 +4,8 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
 # Parameters for adjusting the min and max thresholds for x/y gradients
-GRAD_MIN_THRESHOLD_XY = 20
-GRAD_MAX_THRESHOLD_XY = 100
+GRAD_THRESH_MIN = 20
+GRAD_THRESH_MAX = 100
 
 def abs_sobel_thresh(img, orient='x', thresh_min=0, thresh_max=255):
     
@@ -24,9 +24,8 @@ def abs_sobel_thresh(img, orient='x', thresh_min=0, thresh_max=255):
     # Scale to 8-bit (0 - 255) then convert to type = np.uint8
     scaled_sobel = np.uint8(255*abs_sobel_gradient/np.max(abs_sobel_gradient))
 
-    binary_output = np.zeros_like(scaled_sobel)
-
     #Create a mask of 1's where the scaled gradient magnitude is > thresh_min and < thresh_max
+    binary_output = np.zeros_like(scaled_sobel)
     binary_output[(scaled_sobel >= thresh_min) & (scaled_sobel <= thresh_max)] = 1
     
     return binary_output
@@ -34,8 +33,8 @@ def abs_sobel_thresh(img, orient='x', thresh_min=0, thresh_max=255):
 def test():
     
     image = mpimg.imread('../test_images/test1.jpg')
-    grad_binary_x = abs_sobel_thresh(image, orient='x', thresh_min=20, thresh_max=100)
-    grad_binary_y = abs_sobel_thresh(image, orient='y', thresh_min=20, thresh_max=100)
+    grad_binary_x = abs_sobel_thresh(image, orient='x', thresh_min=GRAD_THRESH_MIN, thresh_max=GRAD_THRESH_MAX)
+    grad_binary_y = abs_sobel_thresh(image, orient='y', thresh_min=GRAD_THRESH_MIN, thresh_max=GRAD_THRESH_MAX)
     
     # Plot the result
     f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 10))
