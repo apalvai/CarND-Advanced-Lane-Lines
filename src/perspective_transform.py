@@ -6,6 +6,8 @@ import glob
 
 from camera_calibration import undistort
 
+# http://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/
+
 def get_source_points():
     # read one of the camera calibration chessboard images
     image_filenames = glob.glob('../camera_cal/calibration*.jpg')
