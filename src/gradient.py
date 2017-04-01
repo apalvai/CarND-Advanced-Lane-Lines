@@ -77,17 +77,22 @@ def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
 
 def test():
     
-    image = mpimg.imread('../test_images/test1.jpg')
+    image = mpimg.imread('../test_images/test6.jpg')
     grad_binary_x = abs_sobel_thresh(image, orient='x', thresh_min=GRAD_ABS_THRESH_MIN, thresh_max=GRAD_ABS_THRESH_MAX)
     grad_binary_y = abs_sobel_thresh(image, orient='y', thresh_min=GRAD_ABS_THRESH_MIN, thresh_max=GRAD_ABS_THRESH_MAX)
     mag_binary = mag_thresh(image, sobel_kernel=3, mag_thresh=(GRAD_MAG_THRESH_MIN, GRAD_MAG_THRESH_MAX))
     dir_binary = dir_threshold(image, sobel_kernel=15, thresh=(GRAD_DIR_THRESH_MIN, GRAD_DIR_THRESH_MAX))
     
+    combined_binary = np.zeros_like(dir_binary)
+    combined_binary[((grad_binary_x == 1) & (grad_binary_y == 1)) | ((mag_binary == 1) & (dir_binary == 1))] = 1
+    
     # Plot the result
     f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 10))
     f.tight_layout()
+
     ax1.imshow(image)
     ax1.set_title('Original Image', fontsize=15)
+    
     ax2.imshow(grad_binary_x, cmap='gray')
     ax2.set_title('Thresholded Gradient (X)', fontsize=15)
     
@@ -97,8 +102,11 @@ def test():
     # ax3.imshow(mag_binary, cmap='gray')
     # ax3.set_title('Gradient Maginitude', fontsize=15)
     
-    ax3.imshow(dir_binary, cmap='gray')
-    ax3.set_title('Gradient Direction', fontsize=15)
+    # ax3.imshow(dir_binary, cmap='gray')
+    # ax3.set_title('Gradient Direction', fontsize=15)
+    
+    ax3.imshow(combined_binary, cmap='gray')
+    ax3.set_title('Combined Gradient', fontsize=15)
     
     plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.)
     plt.show()
