@@ -8,54 +8,26 @@ from camera_calibration import undistort
 
 # http://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/
 
-def get_source_points():
-    # read one of the camera calibration chessboard images
-    image_filenames = glob.glob('../camera_cal/calibration*.jpg')
-    
-    nx = 9
-    ny = 6
-    
-    corners = []
-    
-    for filename in image_filenames:
-        
-        image = mpimg.imread(filename)
-        
-        # convert to grayscale
-        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        
-        # find chessboard corners
-        ret, chessboard_corners = cv2.findChessboardCorners(gray, (nx, ny), None)
-        
-        if ret == True:
-            print('found corners for filename: ', filename)
-            corners = chessboard_corners
-            break
-    
-    # identify source points
-    src_points = np.float32([corners[0][0], corners[nx-1][0], corners[((nx)*(ny-1))][0], corners[nx*ny-1][0]])
-    
-    return src_points
+'''
+NOTE: Order of points should be [top_left, top_right, bottom_right, bottom_left]
+'''
 
-def get_destination_points(img, src_points):
+def get_source_points():
     
-    nx = 9
-    ny = 6
+    return np.float32([[590, 450], [700, 450], [1130, 700], [200, 700]])
+
+def get_destination_points(img):
     
-    dx = img.shape[1]/(nx+1)
-    dy = img.shape[0]/(ny+1)
-    
-    mul = 2/3
+    offset = 300
     img_size = (img.shape[1], img.shape[0])
-    
-    dst = np.float32([[dx*mul, dy*mul], [img_size[0]-dx*mul, dy*mul], [dx*mul, img_size[1]-dy*mul], [img_size[0]-dx*mul, img_size[1]-dy*mul]])
+    dst = np.float32([[offset, 0], [img_size[0]-offset, 0], [img_size[0]-offset, img_size[1]], [offset, img_size[1]]])
     
     return dst
 
 # Apply perspective transform to unwarp an image
 def warp(image, src_points):
     
-    dst_points = get_destination_points(image, src_points)
+    dst_points = get_destination_points(image)
     print('dst ponts: ', dst_points)
     
     M = cv2.getPerspectiveTransform(src_points, dst_points)
@@ -68,7 +40,7 @@ def warp(image, src_points):
 
 def test():
     # read test image
-    test_image = cv2.imread('../camera_cal/calibration10.jpg')
+    test_image = cv2.imread('../test_images/test5.jpg')
     
     # undistort the image
     undistorted_image = undistort(test_image)
@@ -88,4 +60,4 @@ def test():
     ax2.set_title('Unwarped Image', fontsize=30)
     plt.show()
 
-#test()
+test()
