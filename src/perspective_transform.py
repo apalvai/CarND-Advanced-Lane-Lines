@@ -28,7 +28,7 @@ def get_destination_points(img):
 def warp(image, src_points):
     
     dst_points = get_destination_points(image)
-    print('dst ponts: ', dst_points)
+    # print('dst ponts: ', dst_points)
     
     M = cv2.getPerspectiveTransform(src_points, dst_points)
     
