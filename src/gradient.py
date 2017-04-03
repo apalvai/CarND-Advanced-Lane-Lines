@@ -75,26 +75,33 @@ def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
     
     return binary_output
 
-def test():
+def combined_gradient_threshold(image):
     
-    image = mpimg.imread('../test_images/test6.jpg')
     grad_binary_x = abs_sobel_thresh(image, orient='x', thresh_min=GRAD_ABS_THRESH_MIN, thresh_max=GRAD_ABS_THRESH_MAX)
     grad_binary_y = abs_sobel_thresh(image, orient='y', thresh_min=GRAD_ABS_THRESH_MIN, thresh_max=GRAD_ABS_THRESH_MAX)
     mag_binary = mag_thresh(image, sobel_kernel=3, mag_thresh=(GRAD_MAG_THRESH_MIN, GRAD_MAG_THRESH_MAX))
     dir_binary = dir_threshold(image, sobel_kernel=15, thresh=(GRAD_DIR_THRESH_MIN, GRAD_DIR_THRESH_MAX))
     
+    # Create a binary mask
     combined_binary = np.zeros_like(dir_binary)
     combined_binary[((grad_binary_x == 1) & (grad_binary_y == 1)) | ((mag_binary == 1) & (dir_binary == 1))] = 1
+    
+    return combined_binary
+
+def test():
+    
+    image = mpimg.imread('../test_images/test6.jpg')
+    combined_binary = combined_gradient_threshold(image)
     
     # Plot the result
     f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 10))
     f.tight_layout()
-
+    
     ax1.imshow(image)
     ax1.set_title('Original Image', fontsize=15)
     
-    ax2.imshow(grad_binary_x, cmap='gray')
-    ax2.set_title('Thresholded Gradient (X)', fontsize=15)
+    # ax2.imshow(grad_binary_x, cmap='gray')
+    # ax2.set_title('Thresholded Gradient (X)', fontsize=15)
     
     # ax3.imshow(grad_binary_y, cmap='gray')
     # ax3.set_title('Thresholded Gradient (Y)', fontsize=15)

@@ -4,23 +4,23 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
 from camera_calibration import undistort
-from perspective_transform import warp, get_source_points
-from gradient import abs_sobel_thresh, mag_thresh, dir_threshold, GRAD_ABS_THRESH_MIN, GRAD_ABS_THRESH_MAX, GRAD_DIR_THRESH_MIN, GRAD_DIR_THRESH_MAX
+from perspective_transform import warp, get_source_points, get_destination_points
+from gradient import combined_gradient_threshold
 from color import hls_color_binary, rgb_color_binary, gray_binary
 
 # Define conversions in x and y from pixels space to meters
 ym_per_pix = 30/720 # meters per pixel in y dimension
 xm_per_pix = 3.7/700 # meters per pixel in x dimension
 
-def apply_gradient_and_color_threshold(image, s_thresh=(170, 255), sx_thresh=(20, 100)):
+def apply_gradient_and_color_threshold(image, s_thresh=(170, 255)):
 
     image = np.copy(image)
     
-    grad_binary_x = abs_sobel_thresh(image, orient='x', thresh_min=sx_thresh[0], thresh_max=sx_thresh[1])
+    combined_gradient_binary = combined_gradient_threshold(image)
     color_binary = hls_color_binary(image, thresh_min=s_thresh[0], thresh_max=s_thresh[1], color_channel='s')
     
     combined_binary = np.zeros_like(color_binary)
-    combined_binary[(grad_binary_x == 1) | (color_binary == 1)] = 1
+    combined_binary[(combined_gradient_binary == 1) | (color_binary == 1)] = 1
     
     return combined_binary
 
@@ -205,17 +205,44 @@ def radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit
 
 def test():
 
-    image1 = mpimg.imread('../test_images/test1.jpg')
+    image = mpimg.imread('../test_images/test1.jpg')
     
     # process image
-    result1 = process_image(image1)
+    result = process_image(image)
     
     # fit a polynomial of 2nd degree for lane lines based on sliding window technique
-    leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result1)
+    leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result)
     
     # measure radius of curvature
-    y_eval = np.random.randint(0, image1.shape[0]-1)
+    y_eval = np.random.randint(0, image.shape[0]-1)
     radius_of_curvature_in_pixels(y_eval, left_fit, right_fit)
     radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit)
+    
+    # Create an image to draw the lines on
+    warp_zero = np.zeros_like(result).astype(np.uint8)
+    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+    
+    # Recast the x and y points into usable format for cv2.fillPoly()
+    pts_left = np.array([np.transpose(np.vstack([leftx, lefty]))])
+    pts_right = np.array([np.flipud(np.transpose(np.vstack([rightx, righty])))])
+    pts = np.hstack((pts_left, pts_right))
+    
+    # Draw the lane onto the warped blank image
+    cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
+    
+    # Apply inverse perspective tansform
+    src_points = get_source_points()
+    dst_points = get_destination_points(image)
+    Minv = cv2.getPerspectiveTransform(src_points, dst_points)
+    
+    # Warp the blank back to original image space using inverse perspective matrix (Minv)
+    newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0]))
+    
+    undistorted_image = undistort(image)
+    
+    # Combine the result with the original image
+    result = cv2.addWeighted(undistorted_image, 1, newwarp, 0.3, 0)
+    plt.imshow(result)
+    plt.show()
 
 test()
