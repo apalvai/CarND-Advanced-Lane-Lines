@@ -37,16 +37,23 @@ def get_image_and_object_points(nx, ny):
         
     return obj_points, img_points
 
-def calibrate_and_undistort(image, obj_points, img_points):
-    # Use cv2.calibrateCamera() and cv2.undistort()
+def get_calibration_metrics(image):
+    # Use cv2.calibrateCamera()
+    obj_points, img_points = get_image_and_object_points(9, 6)
     gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, gray.shape[::-1], None, None)
+    
+    return ret, mtx, dist, rvecs, tvecs
+
+def calibrate_and_undistort(image):
+    # Use cv2.undistort()
+    ret, mtx, dist, rvecs, tvecs = get_calibration_metrics(image)
     undistorted_img = cv2.undistort(image, mtx, dist, None, mtx)
+    
     return undistorted_img
 
 def undistort(image):
-    obj_points, img_points = get_image_and_object_points(9, 6)
-    undistorted_img = calibrate_and_undistort(image, obj_points, img_points)
+    undistorted_img = calibrate_and_undistort(image)
     return undistorted_img
 
 def test():
@@ -60,4 +67,4 @@ def test():
     ax2.set_title('Undistorted Image', fontsize=30)
     plt.show()
 
-#test()
+test()
