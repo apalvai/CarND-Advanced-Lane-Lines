@@ -77,4 +77,4 @@ def test():
     plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.)
     plt.show()
 
-test()
+#test()
