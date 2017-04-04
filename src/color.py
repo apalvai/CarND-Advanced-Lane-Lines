@@ -38,11 +38,11 @@ def hls_color_binary(image, thresh_min, thresh_max, color_channel='s'):
     # read the relevant color channel (assuming RGB channels as the order)
     channel = []
     if color_channel == 'h':
-        channel = image[:, :, 0]
+        channel = hls[:, :, 0]
     elif color_channel == 'l':
-        channel = image[:, :, 1]
+        channel = hls[:, :, 1]
     elif color_channel == 's':
-        channel = image[:, :, 2]
+        channel = hls[:, :, 2]
     
     # Create a binary and apply color thresholds
     color_binary = np.zeros_like(channel)
