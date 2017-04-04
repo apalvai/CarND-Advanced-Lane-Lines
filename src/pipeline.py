@@ -217,9 +217,16 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
 #    plt.ylim(720, 0)
 #    plt.show()
 
-    return ploty, leftx, lefty, rightx, righty, left_fit, right_fit
+    # measure radius of curvature
+    left_curv, right_curv = radius_of_curvature_in_meters(ploty, leftx, lefty, rightx, righty, left_fit, right_fit)
 
-def radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit):
+    return ploty, leftx, lefty, rightx, righty, left_fit, right_fit, left_curv, right_curv
+
+def radius_of_curvature_in_meters(yvals, leftx, lefty, rightx, righty, left_fit, right_fit):
+    
+    # Define y-value where we want radius of curvature
+    # I'll choose the maximum y-value, corresponding to the bottom of the image
+    y_eval = np.max(yvals)
     
     # Fit new polynomials to x,y in world space
     left_fit_cr = np.polyfit(lefty*ym_per_pix, leftx*xm_per_pix, 2)
@@ -303,16 +310,12 @@ def find_lane_lines(image):
     if len(right_line.current_fit) > 0:
         right_fit = right_line.current_fit[0]
 
-    yvals, leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result, left_fit, right_fit)
+    yvals, leftx, lefty, rightx, righty, left_fit, right_fit, left_curv, right_curv = get_line_pixels_and_fit(result, left_fit, right_fit)
     
+    # Update the left & right lines
     left_line.current_fit = [left_fit]
     right_line.current_fit = [right_fit]
-    
-    # measure radius of curvature
-    y_eval = np.max(yvals)
-    left_curv, right_curv = radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit)
 
-    
     # draw the polygon
     result = draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, right_fit, left_curv)
 
@@ -331,12 +334,12 @@ def test():
         plt.imshow(result)
         plt.show()
 
-#test()
+test()
 
-from moviepy.editor import VideoFileClip
-
-white_output = '../white.mp4'
-clip1 = VideoFileClip('../project_video.mp4')
-white_clip = clip1.fl_image(find_lane_lines) #NOTE: this function expects color images!!
-white_clip.write_videofile(white_output, audio=False)
+#from moviepy.editor import VideoFileClip
+#
+#white_output = '../white.mp4'
+#clip1 = VideoFileClip('../project_video.mp4')
+#white_clip = clip1.fl_image(find_lane_lines) #NOTE: this function expects color images!!
+#white_clip.write_videofile(white_output, audio=False)
 
