@@ -219,15 +219,6 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
 
     return ploty, leftx, lefty, rightx, righty, left_fit, right_fit
 
-def radius_of_curvature_in_pixels(y_eval, left_fit, right_fit):
-    
-    # Define y-value where we want radius of curvature
-    left_curverad = ((1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
-    right_curverad = ((1 + (2*right_fit[0]*y_eval + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
-    # print('radius of curvature in pixels at: ', y_eval, left_curverad, right_curverad)
-    
-    return left_curverad, right_curverad
-
 def radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit):
     
     # Fit new polynomials to x,y in world space
@@ -319,8 +310,8 @@ def find_lane_lines(image):
     
     # measure radius of curvature
     y_eval = np.max(yvals)
-    radius_of_curvature_in_pixels(y_eval, left_fit, right_fit)
     left_curv, right_curv = radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit)
+
     
     # draw the polygon
     result = draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, right_fit, left_curv)
