@@ -282,6 +282,23 @@ def draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, righ
     
     return result
 
+def find_lane_lines(image):
+    # process image
+    result = process_image(image)
+    
+    # fit a polynomial of 2nd degree for lane lines based on sliding window technique
+    yvals, leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result)
+    
+    # measure radius of curvature
+    y_eval = np.max(yvals)
+    radius_of_curvature_in_pixels(y_eval, left_fit, right_fit)
+    left_curv, right_curv = radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit)
+    
+    # draw the polygon
+    result = draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, right_fit, left_curv)
+
+    return result
+
 def test():
     
     for i in range(1,2):
@@ -289,19 +306,8 @@ def test():
         
         image = mpimg.imread(filename)
         
-        # process image
-        result = process_image(image)
-        
-        # fit a polynomial of 2nd degree for lane lines based on sliding window technique
-        yvals, leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result)
-        
-        # measure radius of curvature
-        y_eval = np.max(yvals)
-        radius_of_curvature_in_pixels(y_eval, left_fit, right_fit)
-        left_curv, right_curv = radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit)
-
-        # draw the polygon
-        result = draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, right_fit, left_curv)
+        # find lane lines
+        result = find_lane_lines(image)
         
         plt.imshow(result)
         plt.show()
