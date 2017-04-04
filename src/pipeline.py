@@ -12,6 +12,30 @@ from color import hls_color_binary, rgb_color_binary, gray_binary
 ym_per_pix = 30/720 # meters per pixel in y dimension
 xm_per_pix = 3.7/700 # meters per pixel in x dimension
 
+def select_region_of_interest(image):
+    # create a mask
+    mask = np.zeros_like(image)
+    
+    if len(image.shape) > 2:
+        channel_count = image.shape[2]  # i.e. 3 or 4 depending on your image
+        ignore_mask_color = (255,) * channel_count
+    else:
+        ignore_mask_color = 255
+    
+    # Defining vertices for region of interest
+    imshape = image.shape
+    left_bottom = (100, imshape[0])
+    left_top = (600, 410)
+    right_top = (690, 410)
+    right_bottom = (imshape[1]-50, imshape[0])
+    vertices = np.array([[left_bottom, left_top, right_top, right_bottom]], dtype=np.int32)
+    
+    cv2.fillPoly(mask, vertices, ignore_mask_color)
+    
+    masked_image = cv2.bitwise_and(image, mask)
+    
+    return masked_image
+
 def apply_gradient_and_color_threshold(image, s_thresh=(170, 255)):
 
     image = np.copy(image)
@@ -22,7 +46,10 @@ def apply_gradient_and_color_threshold(image, s_thresh=(170, 255)):
     combined_binary = np.zeros_like(color_binary)
     combined_binary[(combined_gradient_binary == 1) | (color_binary == 1)] = 1
     
-    return combined_binary
+    # select region of interest
+    result = select_region_of_interest(combined_binary)
+    
+    return result
 
 def process_image(image):
     
@@ -37,20 +64,14 @@ def process_image(image):
     result = warp(thresholded_image, src_points)
     
     # Plot the result
-    f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 10))
+    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
     f.tight_layout()
     
     ax1.imshow(image)
     ax1.set_title('Original Image', fontsize=15)
     
-    ax2.imshow(undistorted_image, cmap='gray')
-    ax2.set_title('Undistorted', fontsize=15)
-    
-    ax3.imshow(thresholded_image, cmap='gray')
-    ax3.set_title('Thresholded', fontsize=15)
-    
-    ax4.imshow(result, cmap='gray')
-    ax4.set_title('Unwarped', fontsize=15)
+    ax2.imshow(result, cmap='gray')
+    ax2.set_title('Output', fontsize=15)
     
     plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.)
     plt.show()
@@ -204,45 +225,49 @@ def radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit
     return left_curverad, right_curverad
 
 def test():
+    
+    for i in range(1,2):
+        filename = '../test_images/test{}.jpg'.format(i)
+        
+        image = mpimg.imread(filename)
+        
+        # process image
+        result = process_image(image)
+        
+        # fit a polynomial of 2nd degree for lane lines based on sliding window technique
+        leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result)
+        
+        # measure radius of curvature
+        y_eval = np.random.randint(0, image.shape[0]-1)
+        radius_of_curvature_in_pixels(y_eval, left_fit, right_fit)
+        radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit)
+        
+        # Create an image to draw the lines on
+        warp_zero = np.zeros_like(result).astype(np.uint8)
+        color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+        
+        # Recast the x and y points into usable format for cv2.fillPoly()
+        pts_left = np.array([np.transpose(np.vstack([leftx, lefty]))])
+        pts_right = np.array([np.flipud(np.transpose(np.vstack([rightx, righty])))])
+        pts = np.hstack((pts_left, pts_right))
+        
+        # Draw the lane onto the warped blank image
+        cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
+        
+        # Apply inverse perspective tansform
+        src_points = get_source_points()
+        dst_points = get_destination_points(image)
+        Minv = cv2.getPerspectiveTransform(src_points, dst_points)
+        
+        # Warp the blank back to original image space using inverse perspective matrix (Minv)
+        newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0]))
+        
+        undistorted_image = undistort(image)
+        
+        # Combine the result with the original image
+        result = cv2.addWeighted(undistorted_image, 1, newwarp, 0.3, 0)
+        plt.imshow(result)
+        plt.show()
 
-    image = mpimg.imread('../test_images/test1.jpg')
-    
-    # process image
-    result = process_image(image)
-    
-    # fit a polynomial of 2nd degree for lane lines based on sliding window technique
-    leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result)
-    
-    # measure radius of curvature
-    y_eval = np.random.randint(0, image.shape[0]-1)
-    radius_of_curvature_in_pixels(y_eval, left_fit, right_fit)
-    radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit)
-    
-    # Create an image to draw the lines on
-    warp_zero = np.zeros_like(result).astype(np.uint8)
-    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
-    
-    # Recast the x and y points into usable format for cv2.fillPoly()
-    pts_left = np.array([np.transpose(np.vstack([leftx, lefty]))])
-    pts_right = np.array([np.flipud(np.transpose(np.vstack([rightx, righty])))])
-    pts = np.hstack((pts_left, pts_right))
-    
-    # Draw the lane onto the warped blank image
-    cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
-    
-    # Apply inverse perspective tansform
-    src_points = get_source_points()
-    dst_points = get_destination_points(image)
-    Minv = cv2.getPerspectiveTransform(src_points, dst_points)
-    
-    # Warp the blank back to original image space using inverse perspective matrix (Minv)
-    newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0]))
-    
-    undistorted_image = undistort(image)
-    
-    # Combine the result with the original image
-    result = cv2.addWeighted(undistorted_image, 1, newwarp, 0.3, 0)
-    plt.imshow(result)
-    plt.show()
 
 test()
