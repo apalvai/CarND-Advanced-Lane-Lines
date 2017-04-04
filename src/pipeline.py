@@ -231,8 +231,6 @@ def get_position(image_shape, pts):
     left  = np.min(pts[(pts[:,1] < position) & (pts[:,0] > 700)][:,1])
     right = np.max(pts[(pts[:,1] > position) & (pts[:,0] > 700)][:,1])
     center = (left + right)/2
-    # Define conversions in x and y from pixels space to meters
-    xm_per_pix = 3.7/700 # meteres per pixel in x dimension
     return (position - center)*xm_per_pix
 
 def draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, right_fit, curvature):
@@ -255,7 +253,7 @@ def draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, righ
     # Apply inverse perspective tansform
     src_points = get_source_points()
     dst_points = get_destination_points(image)
-    Minv = cv2.getPerspectiveTransform(src_points, dst_points)
+    Minv = cv2.getPerspectiveTransform(dst_points, src_points)
     
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0]))
@@ -272,14 +270,14 @@ def draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, righ
     cv2.putText(result, text, (50, 100), font, 3, (255, 255, 255), 2)
 
     # Show position on an image
-    pts = np.argwhere(newwarp[:,:,1])
-    position = get_position(image.shape, pts)
-    if position < 0:
-        text = "Vehicle is {:.2f} m left of center".format(-position)
-    else:
-        text = "Vehicle is {:.2f} m right of center".format(position)
-    cv2.putText(result, text, (50, 150), font, 3, (255, 255, 255), 2)
-    
+#    pts = np.argwhere(newwarp[:,:,1])
+#    position = get_position(image.shape, pts)
+#    if position < 0:
+#        text = "Vehicle is {:.2f} m left of center".format(-position)
+#    else:
+#        text = "Vehicle is {:.2f} m right of center".format(position)
+#    cv2.putText(result, text, (50, 150), font, 3, (255, 255, 255), 2)
+
     return result
 
 def find_lane_lines(image):
@@ -301,7 +299,7 @@ def find_lane_lines(image):
 
 def test():
     
-    for i in range(1,2):
+    for i in range(1, 7):
         filename = '../test_images/test{}.jpg'.format(i)
         
         image = mpimg.imread(filename)
