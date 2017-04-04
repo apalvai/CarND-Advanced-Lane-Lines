@@ -249,15 +249,6 @@ def radius_of_curvature_in_meters(yvals, leftx, lefty, rightx, righty, left_fit,
     
     return left_curverad, right_curverad
 
-def get_position(image_shape, pts):
-    # Find the position of the car from the center
-    # It will show if the car is 'x' meters from the left or right
-    position = image_shape[1]/2
-    left  = np.min(pts[(pts[:,1] < position) & (pts[:,0] > 700)][:,1])
-    right = np.max(pts[(pts[:,1] > position) & (pts[:,0] > 700)][:,1])
-    center = (left + right)/2
-    return (position - center)*xm_per_pix
-
 def draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, right_fit, curvature):
     
     # Create an image to draw the lines on
@@ -293,16 +284,7 @@ def draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, righ
     # Show curvature on an image
     text = "Radius of Curvature: {} m".format(int(curvature))
     cv2.putText(result, text, (50, 100), font, 3, (255, 255, 255), 2)
-
-    # Show position on an image
-#    pts = np.argwhere(newwarp[:,:,1])
-#    position = get_position(image.shape, pts)
-#    if position < 0:
-#        text = "Vehicle is {:.2f} m left of center".format(-position)
-#    else:
-#        text = "Vehicle is {:.2f} m right of center".format(position)
-#    cv2.putText(result, text, (50, 150), font, 3, (255, 255, 255), 2)
-
+    
     return result
 
 def find_lane_lines(image):
