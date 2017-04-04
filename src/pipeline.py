@@ -14,8 +14,10 @@ from Line import Line
 ym_per_pix = 30/720 # meters per pixel in y dimension
 xm_per_pix = 3.7/700 # meters per pixel in x dimension
 
+# Setup camera calibration
 calibration = Calibration()
 
+# Set up lines for left and right
 left_line = Line()
 right_line = Line()
 
@@ -62,15 +64,13 @@ def process_image(image):
     
     # calibrate camera and undistort
     if  calibration.mtx == None:
-        print ('computing camera calibration metrics')
+        print ('computing camera calibration metrics...')
         ret, mtx, dist, rvecs, tvecs = get_calibration_metrics(image)
         calibration.mtx = mtx
         calibration.dist = dist
         calibration.rvecs = rvecs
         calibration.tvecs = tvecs
-    else:
-        print ('using camera calibration metrics')
-
+    
     undistorted_image = cv2.undistort(image, calibration.mtx, calibration.dist, None, calibration.mtx)
     
     # apply gradient and color thresholds
@@ -110,7 +110,7 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     margin = 100
     
     if (left_fit == None) | (right_fit == None):
-        print('applying sliding window')
+        print('applying sliding window to detect lane lines...')
         
         # Take a histogram of the bottom half of the image
         histogram = np.sum(binary_warped[binary_warped.shape[0]/2:,:], axis=0)
@@ -167,8 +167,7 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
         right_lane_inds = np.concatenate(right_lane_inds)
 
     else:
-        print('re-use previous image\'s left and right fit values')
-        
+
         left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] - margin)) &
                           (nonzerox < (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] + margin)))
                           
@@ -308,12 +307,10 @@ def find_lane_lines(image):
     left_fit = None
     if len(left_line.current_fit) > 0:
         left_fit = left_line.current_fit[0]
-    print ('left_fit: ', left_fit)
     
     right_fit = None
     if len(right_line.current_fit) > 0:
         right_fit = right_line.current_fit[0]
-    print ('right_fit: ', right_fit)
 
     yvals, leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result, left_fit, right_fit)
     
@@ -343,5 +340,12 @@ def test():
         plt.imshow(result)
         plt.show()
 
+#test()
 
-test()
+from moviepy.editor import VideoFileClip
+
+white_output = '../white.mp4'
+clip1 = VideoFileClip('../project_video.mp4')
+white_clip = clip1.fl_image(find_lane_lines) #NOTE: this function expects color images!!
+white_clip.write_videofile(white_output, audio=False)
+
