@@ -198,7 +198,7 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     plt.ylim(720, 0)
     plt.show()
     
-    return leftx, lefty, rightx, righty, left_fit, right_fit
+    return ploty, leftx, lefty, rightx, righty, left_fit, right_fit
 
 def radius_of_curvature_in_pixels(y_eval, left_fit, right_fit):
     
@@ -224,6 +224,64 @@ def radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit
     
     return left_curverad, right_curverad
 
+def get_position(image_shape, pts):
+    # Find the position of the car from the center
+    # It will show if the car is 'x' meters from the left or right
+    position = image_shape[1]/2
+    left  = np.min(pts[(pts[:,1] < position) & (pts[:,0] > 700)][:,1])
+    right = np.max(pts[(pts[:,1] > position) & (pts[:,0] > 700)][:,1])
+    center = (left + right)/2
+    # Define conversions in x and y from pixels space to meters
+    xm_per_pix = 3.7/700 # meteres per pixel in x dimension
+    return (position - center)*xm_per_pix
+
+def draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, right_fit, curvature):
+    
+    # Create an image to draw the lines on
+    warp_zero = np.zeros_like(result).astype(np.uint8)
+    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+    
+    left_fitx = left_fit[0]*yvals**2 + left_fit[1]*yvals + left_fit[2]
+    right_fitx = right_fit[0]*yvals**2 + right_fit[1]*yvals + right_fit[2]
+    
+    # Recast the x and y points into usable format for cv2.fillPoly()
+    pts_left = np.array([np.transpose(np.vstack([left_fitx, yvals]))])
+    pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, yvals])))])
+    pts = np.hstack((pts_left, pts_right))
+    
+    # Draw the lane onto the warped blank image
+    cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
+    
+    # Apply inverse perspective tansform
+    src_points = get_source_points()
+    dst_points = get_destination_points(image)
+    Minv = cv2.getPerspectiveTransform(src_points, dst_points)
+    
+    # Warp the blank back to original image space using inverse perspective matrix (Minv)
+    newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0]))
+    
+    undistorted_image = undistort(image)
+    
+    # Combine the result with the original image
+    result = cv2.addWeighted(undistorted_image, 1, newwarp, 0.3, 0)
+    
+    font = cv2.FONT_HERSHEY_PLAIN
+    
+    # Show curvature on an image
+    text = "Radius of Curvature: {} m".format(int(curvature))
+    cv2.putText(result, text, (50, 100), font, 3, (255, 255, 255), 2)
+
+    # Show position on an image
+    pts = np.argwhere(newwarp[:,:,1])
+    position = get_position(image.shape, pts)
+    if position < 0:
+        text = "Vehicle is {:.2f} m left of center".format(-position)
+    else:
+        text = "Vehicle is {:.2f} m right of center".format(position)
+    cv2.putText(result, text, (50, 150), font, 3, (255, 255, 255), 2)
+    
+    return result
+
 def test():
     
     for i in range(1,2):
@@ -235,37 +293,16 @@ def test():
         result = process_image(image)
         
         # fit a polynomial of 2nd degree for lane lines based on sliding window technique
-        leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result)
+        yvals, leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result)
         
         # measure radius of curvature
-        y_eval = np.random.randint(0, image.shape[0]-1)
+        y_eval = np.max(yvals)
         radius_of_curvature_in_pixels(y_eval, left_fit, right_fit)
-        radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit)
+        left_curv, right_curv = radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit, right_fit)
+
+        # draw the polygon
+        result = draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, right_fit, left_curv)
         
-        # Create an image to draw the lines on
-        warp_zero = np.zeros_like(result).astype(np.uint8)
-        color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
-        
-        # Recast the x and y points into usable format for cv2.fillPoly()
-        pts_left = np.array([np.transpose(np.vstack([leftx, lefty]))])
-        pts_right = np.array([np.flipud(np.transpose(np.vstack([rightx, righty])))])
-        pts = np.hstack((pts_left, pts_right))
-        
-        # Draw the lane onto the warped blank image
-        cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
-        
-        # Apply inverse perspective tansform
-        src_points = get_source_points()
-        dst_points = get_destination_points(image)
-        Minv = cv2.getPerspectiveTransform(src_points, dst_points)
-        
-        # Warp the blank back to original image space using inverse perspective matrix (Minv)
-        newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0]))
-        
-        undistorted_image = undistort(image)
-        
-        # Combine the result with the original image
-        result = cv2.addWeighted(undistorted_image, 1, newwarp, 0.3, 0)
         plt.imshow(result)
         plt.show()
 
