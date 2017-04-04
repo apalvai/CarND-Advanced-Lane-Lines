@@ -67,4 +67,11 @@ def test():
     ax2.set_title('Undistorted Image', fontsize=30)
     plt.show()
 
+class Calibration():
+    def __init__(self):
+        self.mtx = None
+        self.dist = None
+        self.rvecs = None
+        self.tvecs = None
+
 #test()

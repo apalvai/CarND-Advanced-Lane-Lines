@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
-from camera_calibration import undistort
+from camera_calibration import get_calibration_metrics, Calibration
 from perspective_transform import warp, get_source_points, get_destination_points
 from gradient import combined_gradient_threshold
 from color import hls_color_binary, rgb_color_binary, gray_binary
@@ -11,6 +11,8 @@ from color import hls_color_binary, rgb_color_binary, gray_binary
 # Define conversions in x and y from pixels space to meters
 ym_per_pix = 30/720 # meters per pixel in y dimension
 xm_per_pix = 3.7/700 # meters per pixel in x dimension
+
+calibration = Calibration()
 
 def select_region_of_interest(image):
     # create a mask
@@ -54,7 +56,17 @@ def apply_gradient_and_color_threshold(image, s_thresh=(170, 255)):
 def process_image(image):
     
     # calibrate camera and undistort
-    undistorted_image = undistort(image)
+    if  calibration.mtx == None:
+        print ('computing camera calibration metrics')
+        ret, mtx, dist, rvecs, tvecs = get_calibration_metrics(image)
+        calibration.mtx = mtx
+        calibration.dist = dist
+        calibration.rvecs = rvecs
+        calibration.tvecs = tvecs
+    else:
+        print ('using camera calibration metrics')
+
+    undistorted_image = cv2.undistort(image, calibration.mtx, calibration.dist, None, calibration.mtx)
     
     # apply gradient and color thresholds
     thresholded_image = apply_gradient_and_color_threshold(undistorted_image)
@@ -205,7 +217,7 @@ def radius_of_curvature_in_pixels(y_eval, left_fit, right_fit):
     # Define y-value where we want radius of curvature
     left_curverad = ((1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
     right_curverad = ((1 + (2*right_fit[0]*y_eval + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
-    print('radius of curvature in pixels at: ', y_eval, left_curverad, right_curverad)
+    # print('radius of curvature in pixels at: ', y_eval, left_curverad, right_curverad)
     
     return left_curverad, right_curverad
 
@@ -220,7 +232,7 @@ def radius_of_curvature_in_meters(y_eval, leftx, lefty, rightx, righty, left_fit
     right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
     
     # Now our radius of curvature is in meters
-    print('radius of curvature in meters at: ', y_eval, left_curverad, right_curverad)
+    # print('radius of curvature in meters at: ', y_eval, left_curverad, right_curverad)
     
     return left_curverad, right_curverad
 
@@ -258,7 +270,7 @@ def draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, righ
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0]))
     
-    undistorted_image = undistort(image)
+    undistorted_image = cv2.undistort(image, calibration.mtx, calibration.dist, None, calibration.mtx)
     
     # Combine the result with the original image
     result = cv2.addWeighted(undistorted_image, 1, newwarp, 0.3, 0)
