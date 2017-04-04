@@ -95,6 +95,30 @@ def process_image(image):
 
     return result
 
+def update_line(line, curverad, fitx, fit):
+    line.detected = True
+    line.current_fit = [fit]
+    line.allx = fitx
+    line.bestx = np.mean(fitx)
+    line.radius_of_curvature = curverad
+
+def check_and_update_line(line, curverad, fitx, fit):
+    if line.detected == True:
+        if (curverad/line.radius_of_curvature - 1) < 0.5:
+            update_line(line, curverad, fitx, fit)
+        else:
+            line.detected = False
+            fitx = line.bestx # use the previously comupted values
+    else:
+        if line.radius_of_curvature == None:
+            update_line(line, curverad, fitx, fit)
+        else:
+            if (curverad/line.radius_of_curvature - 1) < 1:
+                update_line(line, curverad, fitx, fit)
+            else:
+                line.detected = False
+                fitx = line.bestx # use the previously comupted values
+
 def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     
     # Create empty lists to receive left and right lane pixel indices
@@ -109,7 +133,7 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     # Set the width of the windows +/- margin
     margin = 100
     
-    if (left_line.detected == False) | (right_line.detected == False):
+    if (left_line.detected == False) | (right_line.detected == False) | (left_fit == None) | (right_fit == None):
         print('applying sliding window to detect lane lines...')
         
         # Take a histogram of the bottom half of the image
@@ -221,15 +245,9 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     left_curv, right_curv = radius_of_curvature_in_meters(ploty, leftx, lefty, rightx, righty, left_fit, right_fit)
 
     # Update the left & right lines
-    left_line.detected = True
-    right_line.detected = True
-    left_line.current_fit = [left_fit]
-    right_line.current_fit = [right_fit]
-    left_line.radius_of_curvature = left_curv
-    right_line.radius_of_curvature = right_curv
-    left_line.allx = left_fitx
-    right_line.allx = right_fitx
-
+    left_fitx = check_and_update_line(left_line, left_curv, left_fitx, left_fit)
+    right_fitx = check_and_update_line(right_line, right_curv, right_fitx, right_fit)
+    
     return ploty, leftx, lefty, rightx, righty, left_fit, right_fit, left_curv, right_curv
 
 def radius_of_curvature_in_meters(yvals, leftx, lefty, rightx, righty, left_fit, right_fit):
