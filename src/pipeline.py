@@ -8,11 +8,16 @@ from perspective_transform import warp, get_source_points, get_destination_point
 from gradient import combined_gradient_threshold
 from color import hls_color_binary, rgb_color_binary, gray_binary
 
+from Line import Line
+
 # Define conversions in x and y from pixels space to meters
 ym_per_pix = 30/720 # meters per pixel in y dimension
 xm_per_pix = 3.7/700 # meters per pixel in x dimension
 
 calibration = Calibration()
+
+left_line = Line()
+right_line = Line()
 
 def select_region_of_interest(image):
     # create a mask
@@ -101,6 +106,9 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     nonzeroy = np.array(nonzero[0])
     nonzerox = np.array(nonzero[1])
     
+    # Set the width of the windows +/- margin
+    margin = 100
+    
     if (left_fit == None) | (right_fit == None):
         print('applying sliding window')
         
@@ -122,9 +130,6 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
         # Current positions to be updated for each window
         leftx_current = leftx_base
         rightx_current = rightx_base
-        
-        # Set the width of the windows +/- margin
-        margin = 100
         
         # Set minimum number of pixels found to recenter window
         minpix = 50
@@ -164,8 +169,11 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     else:
         print('re-use previous image\'s left and right fit values')
         
-        left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] - margin)) & (nonzerox < (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] + margin)))
-        right_lane_inds = ((nonzerox > (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] - margin)) & (nonzerox < (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] + margin)))
+        left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] - margin)) &
+                          (nonzerox < (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] + margin)))
+                          
+        right_lane_inds = ((nonzerox > (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] - margin)) &
+                           (nonzerox < (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] + margin)))
     
     # Extract left and right line pixel positions
     leftx = nonzerox[left_lane_inds]
@@ -297,7 +305,20 @@ def find_lane_lines(image):
     result = process_image(image)
     
     # fit a polynomial of 2nd degree for lane lines based on sliding window technique
-    yvals, leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result)
+    left_fit = None
+    if len(left_line.current_fit) > 0:
+        left_fit = left_line.current_fit[0]
+    print ('left_fit: ', left_fit)
+    
+    right_fit = None
+    if len(right_line.current_fit) > 0:
+        right_fit = right_line.current_fit[0]
+    print ('right_fit: ', right_fit)
+
+    yvals, leftx, lefty, rightx, righty, left_fit, right_fit = get_line_pixels_and_fit(result, left_fit, right_fit)
+    
+    left_line.current_fit = [left_fit]
+    right_line.current_fit = [right_fit]
     
     # measure radius of curvature
     y_eval = np.max(yvals)
