@@ -109,7 +109,7 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     # Set the width of the windows +/- margin
     margin = 100
     
-    if (left_fit == None) | (right_fit == None):
+    if (left_line.detected == False) | (right_line.detected == False):
         print('applying sliding window to detect lane lines...')
         
         # Take a histogram of the bottom half of the image
@@ -221,10 +221,12 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     left_curv, right_curv = radius_of_curvature_in_meters(ploty, leftx, lefty, rightx, righty, left_fit, right_fit)
 
     # Update the left & right lines
+    left_line.detected = True
+    right_line.detected = True
     left_line.current_fit = [left_fit]
     right_line.current_fit = [right_fit]
-    left_line.curvature = left_curv
-    right_line.curvature = right_curv
+    left_line.radius_of_curvature = left_curv
+    right_line.radius_of_curvature = right_curv
     left_line.allx = left_fitx
     right_line.allx = right_fitx
 
@@ -313,6 +315,10 @@ def test():
         filename = '../test_images/test{}.jpg'.format(i)
         
         image = mpimg.imread(filename)
+        
+        # reset the lines
+        left_line = Line()
+        right_line = Line()
         
         # find lane lines
         result = find_lane_lines(image)
