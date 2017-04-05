@@ -108,7 +108,8 @@ def check_and_update_line(line, curverad, fitx, fit):
             update_line(line, curverad, fitx, fit)
         else:
             line.detected = False
-            fitx = line.bestx # use the previously comupted values
+            # use the previously comupted values
+            fitx = line.allx
     else:
         if line.radius_of_curvature == None:
             update_line(line, curverad, fitx, fit)
@@ -117,7 +118,9 @@ def check_and_update_line(line, curverad, fitx, fit):
                 update_line(line, curverad, fitx, fit)
             else:
                 line.detected = False
-                fitx = line.bestx # use the previously comupted values
+                # use the previously comupted values
+                fitx = line.allx
+    return fitx
 
 def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     
