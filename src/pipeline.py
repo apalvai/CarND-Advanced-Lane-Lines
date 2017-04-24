@@ -63,7 +63,7 @@ def apply_gradient_and_color_threshold(image, s_thresh=(170, 255)):
 def process_image(image):
     
     # calibrate camera and undistort
-    if  calibration.mtx == None:
+    if  calibration.mtx is None:
         print ('computing camera calibration metrics...')
         ret, mtx, dist, rvecs, tvecs = get_calibration_metrics(image)
         calibration.mtx = mtx
@@ -136,7 +136,7 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     # Set the width of the windows +/- margin
     margin = 100
     
-    if (left_line.detected == False) | (right_line.detected == False) | (left_fit == None) | (right_fit == None):
+    if (left_line.detected == False) | (right_line.detected == False) | (left_fit is None) | (right_fit is None):
         print('applying sliding window to detect lane lines...')
         
         # Take a histogram of the bottom half of the image
