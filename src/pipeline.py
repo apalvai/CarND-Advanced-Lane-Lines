@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
+from collections import deque
+
 from camera_calibration import get_calibration_metrics, Calibration
 from perspective_transform import warp, get_source_points, get_destination_points
 from gradient import combined_gradient_threshold
@@ -20,6 +22,8 @@ calibration = Calibration()
 # Set up lines for left and right
 left_line = Line()
 right_line = Line()
+
+Minv = None
 
 def select_region_of_interest(image):
     # create a mask
@@ -45,15 +49,16 @@ def select_region_of_interest(image):
     
     return masked_image
 
-def apply_gradient_and_color_threshold(image, s_thresh=(170, 255)):
+def apply_gradient_and_color_threshold(image, s_thresh=(90, 255), h_thresh=(15, 100)):
 
     image = np.copy(image)
     
     combined_gradient_binary = combined_gradient_threshold(image)
-    color_binary = hls_color_binary(image, thresh_min=s_thresh[0], thresh_max=s_thresh[1], color_channel='s')
+    s_color_binary = hls_color_binary(image, thresh_min=s_thresh[0], thresh_max=s_thresh[1], color_channel='s')
+    h_color_binary = hls_color_binary(image, thresh_min=h_thresh[0], thresh_max=h_thresh[1], color_channel='h')
     
-    combined_binary = np.zeros_like(color_binary)
-    combined_binary[(combined_gradient_binary == 1) | (color_binary == 1)] = 1
+    combined_binary = np.zeros_like(s_color_binary)
+    combined_binary[(combined_gradient_binary == 1) | (s_color_binary == 1) | (h_color_binary == 1)] = 1
     
     # select region of interest
     result = select_region_of_interest(combined_binary)
@@ -97,29 +102,59 @@ def process_image(image):
 
 def update_line(line, curverad, fitx, fit):
     line.detected = True
-    line.current_fit = [fit]
-    line.allx = fitx
-    line.bestx = np.mean(fitx)
+    # update allx
+    if line.allx is None:
+        line.allx = deque(maxlen=15)
+    line.allx.append(fitx)
+    # compute bestx
+    line.bestx = np.mean(line.allx)
     line.radius_of_curvature = curverad
+
+def check_and_update_fit(line, fit):
+    # populate current_fit
+    line.current_fit = fit
+    # print('current_fit: ', line.current_fit)
+    # update all_fit
+    if line.all_fit is None:
+        line.all_fit = deque(maxlen=15)
+    line.all_fit.append(fit)
+    # print('all_fit: ', len(line.all_fit))
+    # compute best_fit
+    line.best_fit = np.mean(line.all_fit, axis=0)
+    # print('best_fit: ', line.best_fit)
+    
+    # compute diffs
+    if line.all_fit is None:
+        print('all_fit is not initialized')
+    else:
+        if len(line.all_fit) > 1:
+            last_fit = list(line.all_fit)[-2]
+            line.diffs = np.subtract(fit, last_fit)
+    
+    # print('diffs:', line.diffs, 'magnitude: ', np.linalg.norm(line.diffs))
+    if np.linalg.norm(line.diffs) > 100:
+        line.detected = False
+        fit = line.best_fit
+
+    return fit
 
 def check_and_update_line(line, curverad, fitx, fit):
     if line.detected == True:
-        if (curverad/line.radius_of_curvature - 1) < 0.5:
+        if (curverad/line.radius_of_curvature - 1) < 1.5:
             update_line(line, curverad, fitx, fit)
         else:
             line.detected = False
-            # use the previously comupted values
-            fitx = line.allx
     else:
         if line.radius_of_curvature == None:
             update_line(line, curverad, fitx, fit)
         else:
-            if (curverad/line.radius_of_curvature - 1) < 1:
+            if (curverad/line.radius_of_curvature - 1) < 1.5:
                 update_line(line, curverad, fitx, fit)
             else:
                 line.detected = False
-                # use the previously comupted values
-                fitx = line.allx
+
+    # use the best fitted x values
+    fitx = line.allx
     return fitx
 
 def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
@@ -138,6 +173,8 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     
     if (left_line.detected == False) | (right_line.detected == False) | (left_fit is None) | (right_fit is None):
         print('applying sliding window to detect lane lines...')
+        print('left_line diffs: ', np.linalg.norm(left_line.diffs))
+        print('right_line diffs: ', np.linalg.norm(right_line.diffs))
         
         # Take a histogram of the bottom half of the image
         histogram = np.sum(binary_warped[binary_warped.shape[0]/2:,:], axis=0)
@@ -211,6 +248,14 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
     left_fit = np.polyfit(lefty, leftx, 2)
     right_fit = np.polyfit(righty, rightx, 2)
     
+    # check and update left and right fits
+    left_fit = check_and_update_fit(left_line, left_fit)
+    right_fit = check_and_update_fit(right_line, right_fit)
+    # If any one of the lines is not detected, then compute new lines
+    if left_line.detected == False | right_line.detected == False:
+        left_line.detected = False
+        right_line.detected = False
+    
     # Generate x and y values for plotting
     ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0] )
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
@@ -246,10 +291,14 @@ def get_line_pixels_and_fit(binary_warped, left_fit=None, right_fit=None):
 
     # measure radius of curvature
     left_curv, right_curv = radius_of_curvature_in_meters(ploty, leftx, lefty, rightx, righty, left_fit, right_fit)
-
+    
     # Update the left & right lines
     left_fitx = check_and_update_line(left_line, left_curv, left_fitx, left_fit)
     right_fitx = check_and_update_line(right_line, right_curv, right_fitx, right_fit)
+    # If any one of the lines is not detected, then compute new lines
+    if left_line.detected == False | right_line.detected == False:
+        left_line.detected = False
+        right_line.detected = False
     
     return ploty, leftx, lefty, rightx, righty, left_fit, right_fit, left_curv, right_curv
 
@@ -317,9 +366,12 @@ def draw_poly(image, result, yvals, leftx, lefty, rightx, righty, left_fit, righ
     cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
     
     # Apply inverse perspective tansform
-    src_points = get_source_points()
-    dst_points = get_destination_points(image)
-    Minv = cv2.getPerspectiveTransform(dst_points, src_points)
+    global Minv
+    if Minv is None:
+        print('computing Minv...')
+        src_points = get_source_points()
+        dst_points = get_destination_points(image)
+        Minv = cv2.getPerspectiveTransform(dst_points, src_points)
     
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0]))
@@ -351,14 +403,9 @@ def find_lane_lines(image):
     result = process_image(image)
     
     # fit a polynomial of 2nd degree for lane lines based on sliding window technique
-    left_fit = None
-    if len(left_line.current_fit) > 0:
-        left_fit = left_line.current_fit[0]
+    left_fit = left_line.best_fit
+    right_fit = right_line.best_fit
     
-    right_fit = None
-    if len(right_line.current_fit) > 0:
-        right_fit = right_line.current_fit[0]
-
     yvals, leftx, lefty, rightx, righty, left_fit, right_fit, left_curv, right_curv = get_line_pixels_and_fit(result, left_fit, right_fit)
 
     # draw the polygon

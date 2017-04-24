@@ -9,10 +9,12 @@ class Line():
         self.recent_xfitted = []
         #average x values of the fitted line over the last n iterations
         self.bestx = None
+        # polynomial coefficients of n iterations
+        self.all_fit = None
         #polynomial coefficients averaged over the last n iterations
         self.best_fit = None
         #polynomial coefficients for the most recent fit
-        self.current_fit = []
+        self.current_fit = None
         #radius of curvature of the line in some units
         self.radius_of_curvature = None
         #distance in meters of vehicle center from the line

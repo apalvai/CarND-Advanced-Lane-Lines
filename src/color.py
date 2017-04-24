@@ -35,7 +35,7 @@ def hls_color_binary(image, thresh_min, thresh_max, color_channel='s'):
     # convert the rgb image to hls image
     hls = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
     
-    # read the relevant color channel (assuming RGB channels as the order)
+    # read the relevant color channel (assuming HLS channels as the order)
     channel = []
     if color_channel == 'h':
         channel = hls[:, :, 0]
