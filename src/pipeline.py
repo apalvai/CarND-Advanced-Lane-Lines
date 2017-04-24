@@ -104,7 +104,7 @@ def update_line(line, curverad, fitx, fit):
     line.detected = True
     # update allx
     if line.allx is None:
-        line.allx = deque(maxlen=15)
+        line.allx = deque(maxlen=10)
     line.allx.append(fitx)
     # compute bestx
     line.bestx = np.mean(line.allx)
@@ -116,7 +116,7 @@ def check_and_update_fit(line, fit):
     # print('current_fit: ', line.current_fit)
     # update all_fit
     if line.all_fit is None:
-        line.all_fit = deque(maxlen=15)
+        line.all_fit = deque(maxlen=10)
     line.all_fit.append(fit)
     # print('all_fit: ', len(line.all_fit))
     # compute best_fit
@@ -132,7 +132,7 @@ def check_and_update_fit(line, fit):
             line.diffs = np.subtract(fit, last_fit)
     
     # print('diffs:', line.diffs, 'magnitude: ', np.linalg.norm(line.diffs))
-    if np.linalg.norm(line.diffs) > 100:
+    if np.linalg.norm(line.diffs) > 50:
         line.detected = False
         fit = line.best_fit
 
@@ -140,18 +140,22 @@ def check_and_update_fit(line, fit):
 
 def check_and_update_line(line, curverad, fitx, fit):
     if line.detected == True:
-        if (curverad/line.radius_of_curvature - 1) < 1.5:
+        if (curverad/line.radius_of_curvature - 1) < 2.5:
             update_line(line, curverad, fitx, fit)
         else:
+            print('curverad: ', curverad)
+            print('line.radius_of_curvature: ', line.radius_of_curvature)
             line.detected = False
     else:
         if line.radius_of_curvature == None:
             update_line(line, curverad, fitx, fit)
         else:
-            if (curverad/line.radius_of_curvature - 1) < 1.5:
+            if (curverad/line.radius_of_curvature - 1) < 2.5:
                 update_line(line, curverad, fitx, fit)
             else:
                 line.detected = False
+                print('curverad: ', curverad)
+                print('line.radius_of_curvature: ', line.radius_of_curvature)
 
     # use the best fitted x values
     fitx = line.allx
